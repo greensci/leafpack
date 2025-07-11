@@ -1,0 +1,7 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\.lpk\shell\LeafPack]
+"Icon"="C:\\Users\\greens\\Documents\\GitHub\\leafpack\\leafpack.exe,0"
+"MUIVerb"="LeafPack"
+"SubCommands"="sex;haa"
+
