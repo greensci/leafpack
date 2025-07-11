@@ -49,14 +49,14 @@ uint32_t crc32(const std::string &text)
 }
 
 int globalmode = 0; // if 0 = normal retail mode, if 1 = unpack mode, if 2 = pack mode
-int generateRandom()
+int generateRandom(int min, int max)
 {
     // Initialize random number generator (done only once)
     static std::random_device rd;  // True random number generator
     static std::mt19937 gen(rd()); // Mersenne Twister engine
 
     // Define the distribution range [0, 253]
-    static std::uniform_int_distribution<int> distrib(0, 253);
+    static std::uniform_int_distribution<int> distrib(min, max);
 
     return distrib(gen);
 }
@@ -220,10 +220,10 @@ int main(int argc, char *argv[])
             packedData[2] = 0x4B; // 'K'
             packedData[3] = 0x31; // Version 1
 
-            unsigned char bitter = generateRandom(); // Binary literal (C++14)
+            unsigned char bitter = generateRandom(0, 253); // Binary literal (C++14)
             packedData[4] = bitter;
             packedData[5] = length;
-            packedData[6] = 0x00;
+            packedData[6] = generateRandom(0x45, 254);
 
             string bitsBinKey = byteToBinaryString(bitter);
 
@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
             std::getline(std::cin, password);
             uint32_t passchecksum = crc32(password);
 
-            int passwordLength = 8;
+            int passwordLength = 4;
 
             uint8_t* passcheckumbytes = split32To8(passchecksum);
 
@@ -317,19 +317,40 @@ int main(int argc, char *argv[])
             packedData[2] = 0x4B; // 'K'
             packedData[3] = 0x31; // Version 1
 
-            unsigned char bitter = generateRandom(); // Binary literal (C++14)
+            unsigned char bitter = generateRandom(0, 253); // Binary literal (C++14)
             packedData[4] = bitter;
             packedData[5] = length;
         
             std::cout << "Checksum: 0x" << std::hex << passchecksum << std::endl;
+            int hahahah = generateRandom(0, 4);
 
             packedData[6] = passwordLength;
+
+            if(hahahah == 0){
+                packedData[6] = 0x11; // No password
+                bitter = (int)passcheckumbytes[0]; // Use the last byte of data as the key
+            }
+            else if(hahahah == 1){
+                packedData[6] = 0x25; // Password
+                bitter = (int)passcheckumbytes[1]; // Use the second last byte of data as the key
+            }
+            else if(hahahah == 2){
+                packedData[6] = 0x38; // Password
+                bitter = (int)passcheckumbytes[2]; // Use the third last byte of data as the key
+            }
+            else{
+                packedData[6] = 0x43; // Password
+                bitter = (int)passcheckumbytes[3]; // Use the last byte of data as the key
+            }
 
             string bitsBinKey = byteToBinaryString(bitter);
 
             int hihihi = 0;
+            
 
             // std::cout << "Key bits: " << bitsBinKey << endl;
+          
+
             
          
             std::cout << "Checksumbytes: 0x" << std::hex << (int)passcheckumbytes[0] << std::endl;
@@ -337,6 +358,8 @@ int main(int argc, char *argv[])
             std::cout << "Checksumbytes: 0x" << std::hex << (int)passcheckumbytes[2] << std::endl;
             std::cout << "Checksumbytes: 0x" << std::hex << (int)passcheckumbytes[3] << std::endl;
 
+           
+          
             for (int i = 7; i < (length + 7 + passwordLength) - 1; i += 8)
             {
                 for (int x = 0; x < 8; x++)
@@ -386,6 +409,10 @@ int main(int argc, char *argv[])
                     packedData[i + x] = byter;
                 }
             }
+            packedData[packedData.size() - 4] = passcheckumbytes[0];
+            packedData[packedData.size() - 3] = passcheckumbytes[1];
+            packedData[packedData.size() - 2] = passcheckumbytes[2];
+            packedData[packedData.size() - 1] = passcheckumbytes[3];
 
             // Save the packed data
             string outputFilename = getOutputFilename(arg2);
@@ -416,35 +443,53 @@ int main(int argc, char *argv[])
             vector<unsigned char> unpackedData(data.size() - (6 + length));
 
             // Use the same key byte position (4) as in the unpacker
-            unsigned char bitter = data[4]; // Binary literal (C++14)
-
-            string bitsBinKey = byteToBinaryString(bitter);
-
+          
+unsigned char bitter = data[4]; // Binary literal (C++14)
             // std::cout << "Key bits: " << bitsBinKey << endl;
             string filename = "";
 
-            if (data[6] != 0x00)
+            if (data[6] <= 0x45)
             {
                 std::string password;
                 std::cout << "Enter a password for the packed file: \n";
                 std::getline(std::cin, password);
-                std::string passchecksum = std::to_string(crc32(password));
+              
 
-                int32_t passchecksumfile;
-                std::string filechecksumpass = "";
-                int haha = 0;
-                for (int i = data.size() - data[6]; i < data.size(); i++)
-                {
-                    filechecksumpass += (char)data[haha];
-                    haha++;
-                }
+             
+                uint32_t passchecksum = crc32(password);
+
+        
+                uint8_t* passcheckumbytes = split32To8(passchecksum);
+
 
                 std::cout << "Checksum: " << passchecksum << endl;
-                std::cout << "File Checksum: " << filechecksumpass << endl;
 
-                int passwordLength = passchecksum.size();
+                if(data[6] == 0x11){
+                    bitter = data[data.size() - 4];
+                }
+                else if(data[6] == 0x25){
+                    bitter = data[data.size() - 3];
+                }
+                else if(data[6] == 0x38){
+                    bitter = data[data.size() - 2];
+                }
+                else if(data[6] == 0x43){
+                    bitter = data[data.size() - 1];
+                }else{
+                    std::cout << "Error: Invalid file" << endl;
+                    return 1;
+                }
 
-                if (passchecksum == filechecksumpass)
+
+                
+               
+
+               
+
+                if (data[data.size() - 4] == passcheckumbytes[0] &&
+                data[data.size() - 3] == passcheckumbytes[1] &&
+                data[data.size() - 2] == passcheckumbytes[2] &&
+                data[data.size() - 1] == passcheckumbytes[3])
                 {
                     std::cout << "Password is correct, unpacking..." << endl;
                 }
@@ -454,6 +499,9 @@ int main(int argc, char *argv[])
                     return 1;
                 }
             }
+              
+
+            string bitsBinKey = byteToBinaryString(bitter);
 
             for (int i = 7; i < (data[5] + 7) - 1; i += 8)
             {
@@ -481,11 +529,11 @@ int main(int argc, char *argv[])
             }
             std::cout << "Filename: " << filename << endl;
 
-            for (int i = 6 + length; i < data.size(); i += 8)
+            for (int i = 6 + length; i < data.size() - 4; i += 8)
             {
                 for (int x = 0; x < 8; x++)
                 {
-                    if (i + x >= data.size())
+                    if (i + x >= data.size() - 4)
                     {
                         continue; // Avoid out-of-bounds access
                     }
@@ -505,6 +553,7 @@ int main(int argc, char *argv[])
                     unpackedData[(i + x) - (6 + length)] = byter;
                 }
             }
+            
 
             // Save the packed data
 
