@@ -7,12 +7,12 @@ BEGIN
     BLOCK "080904E4"
     BEGIN
       VALUE "CompanyName", "greensci"
-      VALUE "FileDescription", "filelister"
+      VALUE "FileDescription", "LeafPack"
       VALUE "FileVersion", "1.0"
-      VALUE "InternalName", "filelister"
+      VALUE "InternalName", "LeafPack"
       VALUE "LegalCopyright", "greensci (c)2025"
-      VALUE "OriginalFilename", "filelister.exe"
-      VALUE "ProductName", "filelister"
+      VALUE "OriginalFilename", "leafpack.exe"
+      VALUE "ProductName", "LeafPack"
       VALUE "ProductVersion", "1.0"
     END
   END

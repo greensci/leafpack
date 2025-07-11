@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
         globalmode = 2;
     }
 
-    std::cout << "LeafPack V1 " << appmode << endl;
+    std::cout << "LeafPack V1 - by greensci " << appmode << endl;
     if (std::string(argv[1]) == "-p" || globalmode == 2)
     {
         std::cout << "Packing file..." << endl;
@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
             packedData[4] = bitter;
             packedData[5] = length;
         
-            std::cout << "Checksum: 0x" << std::hex << passchecksum << std::endl;
+          
             int hahahah = generateRandom(0, 4);
 
             packedData[6] = passwordLength;
@@ -351,12 +351,6 @@ int main(int argc, char *argv[])
             // std::cout << "Key bits: " << bitsBinKey << endl;
           
 
-            
-         
-            std::cout << "Checksumbytes: 0x" << std::hex << (int)passcheckumbytes[0] << std::endl;
-            std::cout << "Checksumbytes: 0x" << std::hex << (int)passcheckumbytes[1] << std::endl;
-            std::cout << "Checksumbytes: 0x" << std::hex << (int)passcheckumbytes[2] << std::endl;
-            std::cout << "Checksumbytes: 0x" << std::hex << (int)passcheckumbytes[3] << std::endl;
 
            
           
