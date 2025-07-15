@@ -10,14 +10,17 @@
 #include <iostream>
 #include <iomanip>
 #include <random>
+#include <cstdint>
+#include <string>
 using namespace std;
 
 // CRC32 table
 uint32_t crc32_table[256];
+uint8_t crc8_table[256];
 
-uint8_t* split32To8(uint32_t value)
+uint8_t *split32To8(uint32_t value)
 {
-    uint8_t* bytes = new uint8_t[4];
+    uint8_t *bytes = new uint8_t[4];
     bytes[0] = (value >> 24) & 0xFF; // Most significant byte (MSB)
     bytes[1] = (value >> 16) & 0xFF;
     bytes[2] = (value >> 8) & 0xFF;
@@ -36,6 +39,35 @@ void generate_crc32_table()
         }
         crc32_table[i] = crc;
     }
+}
+
+void generate_crc8_table() {
+    const uint8_t polynomial = 0x07;
+    for (uint16_t i = 0; i < 256; i++) {
+        uint8_t crc = i;
+        for (int j = 0; j < 8; j++) {
+            crc = (crc & 0x80) ? ((crc << 1) ^ polynomial) : (crc << 1);
+        }
+        crc8_table[i] = crc;
+    }
+    std::cout << "gerateded" << endl;
+}
+
+
+uint8_t crc8(const std::string &word) {
+    static bool initialized = false;
+    if (!initialized) {
+        generate_crc8_table();
+        initialized = true;
+    }
+    
+    uint8_t crc = 0;
+    for (char c : word) {
+        crc = crc8_table[crc ^ c];
+    }
+     std::cout << "crceddd" << endl;
+    return crc;
+   
 }
 
 uint32_t crc32(const std::string &text)
@@ -155,6 +187,7 @@ string getOutputFilename(const string &inputFilename)
 int main(int argc, char *argv[])
 {
     generate_crc32_table();
+
     if (argc < 2)
     {
         cerr << "Usage: leafpack <argument> <inputfile>" << endl;
@@ -270,7 +303,7 @@ int main(int argc, char *argv[])
                         byter = swapNibbles(x, data[(i + x) - (6 + length)]);
                     }
                     else
-                    { 
+                    {
                         // Mode 0 is its own inverse
                         byter = swapNibbles(0, data[(i + x) - (6 + length)]);
                     }
@@ -293,7 +326,7 @@ int main(int argc, char *argv[])
     else if (std::string(argv[1]) == "-pp" || globalmode == 2)
     {
         std::cout << "Packing file..." << endl;
-
+        generate_crc8_table();
         try
         {
             std::string password;
@@ -303,7 +336,7 @@ int main(int argc, char *argv[])
 
             int passwordLength = 4;
 
-            uint8_t* passcheckumbytes = split32To8(passchecksum);
+            uint8_t *passcheckumbytes = split32To8(passchecksum);
 
             std::string arg2 = argv[2];
 
@@ -317,43 +350,25 @@ int main(int argc, char *argv[])
             packedData[2] = 0x4B; // 'K'
             packedData[3] = 0x31; // Version 1
 
-            unsigned char bitter = generateRandom(0, 253); // Binary literal (C++14)
+            uint8_t bitter = generateRandom(0, 253); // Binary literal (C++14)
             packedData[4] = bitter;
             packedData[5] = length;
-        
-          
+
             int hahahah = generateRandom(0, 4);
 
-            packedData[6] = passwordLength;
+            packedData[6] = generateRandom(0x45, 254);
 
-            if(hahahah == 0){
-                packedData[6] = 0x11; // No password
-                bitter = (int)passcheckumbytes[0]; // Use the last byte of data as the key
-            }
-            else if(hahahah == 1){
-                packedData[6] = 0x25; // Password
-                bitter = (int)passcheckumbytes[1]; // Use the second last byte of data as the key
-            }
-            else if(hahahah == 2){
-                packedData[6] = 0x38; // Password
-                bitter = (int)passcheckumbytes[2]; // Use the third last byte of data as the key
-            }
-            else{
-                packedData[6] = 0x43; // Password
-                bitter = (int)passcheckumbytes[3]; // Use the last byte of data as the key
-            }
+            bitter = crc8(password);
+            printf("key 0x%02X\n", bitter);
 
             string bitsBinKey = byteToBinaryString(bitter);
 
+            std::cout << "whaat? " << bitsBinKey << endl;
+
             int hihihi = 0;
-            
 
             // std::cout << "Key bits: " << bitsBinKey << endl;
-          
 
-
-           
-          
             for (int i = 7; i < (length + 7 + passwordLength) - 1; i += 8)
             {
                 for (int x = 0; x < 8; x++)
@@ -422,7 +437,7 @@ int main(int argc, char *argv[])
     else if (std::string(argv[1]) == "-d" || globalmode == 1)
     {
         std::cout << "Unpacking file..." << endl;
-
+        generate_crc8_table();
         try
         {
 
@@ -437,8 +452,8 @@ int main(int argc, char *argv[])
             vector<unsigned char> unpackedData(data.size() - (6 + length));
 
             // Use the same key byte position (4) as in the unpacker
-          
-unsigned char bitter = data[4]; // Binary literal (C++14)
+
+            uint8_t bitter = data[4]; // Binary literal (C++14)
             // std::cout << "Key bits: " << bitsBinKey << endl;
             string filename = "";
 
@@ -447,43 +462,19 @@ unsigned char bitter = data[4]; // Binary literal (C++14)
                 std::string password;
                 std::cout << "Enter a password for the packed file: \n";
                 std::getline(std::cin, password);
-              
 
-             
                 uint32_t passchecksum = crc32(password);
 
-        
-                uint8_t* passcheckumbytes = split32To8(passchecksum);
-
+                uint8_t *passcheckumbytes = split32To8(passchecksum);
 
                 std::cout << "Checksum: " << passchecksum << endl;
 
-                if(data[6] == 0x11){
-                    bitter = data[data.size() - 4];
-                }
-                else if(data[6] == 0x25){
-                    bitter = data[data.size() - 3];
-                }
-                else if(data[6] == 0x38){
-                    bitter = data[data.size() - 2];
-                }
-                else if(data[6] == 0x43){
-                    bitter = data[data.size() - 1];
-                }else{
-                    std::cout << "Error: Invalid file" << endl;
-                    return 1;
-                }
-
-
-                
-               
-
-               
+                bitter = crc8(password);
 
                 if (data[data.size() - 4] == passcheckumbytes[0] &&
-                data[data.size() - 3] == passcheckumbytes[1] &&
-                data[data.size() - 2] == passcheckumbytes[2] &&
-                data[data.size() - 1] == passcheckumbytes[3])
+                    data[data.size() - 3] == passcheckumbytes[1] &&
+                    data[data.size() - 2] == passcheckumbytes[2] &&
+                    data[data.size() - 1] == passcheckumbytes[3])
                 {
                     std::cout << "Password is correct, unpacking..." << endl;
                 }
@@ -493,7 +484,6 @@ unsigned char bitter = data[4]; // Binary literal (C++14)
                     return 1;
                 }
             }
-              
 
             string bitsBinKey = byteToBinaryString(bitter);
 
@@ -547,7 +537,6 @@ unsigned char bitter = data[4]; // Binary literal (C++14)
                     unpackedData[(i + x) - (6 + length)] = byter;
                 }
             }
-            
 
             // Save the packed data
 
