@@ -1,0 +1,23 @@
+1 VERSIONINFO
+FILEVERSION     1,0,0,0
+PRODUCTVERSION  1,0,0,0
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "080904E4"
+    BEGIN
+      VALUE "CompanyName", "greensci"
+      VALUE "FileDescription", "LeafPack"
+      VALUE "FileVersion", "1.0"
+      VALUE "InternalName", "LeafPack"
+      VALUE "LegalCopyright", "greensci (c)2025"
+      VALUE "OriginalFilename", "leafpack.exe"
+      VALUE "ProductName", "LeafPack"
+      VALUE "ProductVersion", "1.0"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x809, 1252
+  END
+END
