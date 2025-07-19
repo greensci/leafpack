@@ -1,0 +1,29 @@
+﻿  main.cpp
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(61,21): warning C4244: 'initializing': conversion from 'uint16_t' to 'uint8_t', possible loss of data
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(179,32): warning C4244: 'argument': conversion from 'std::streamoff' to 'const unsigned int', possible loss of data
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(290,29): warning C4267: '=': conversion from 'size_t' to '_Ty', possible loss of data
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(290,29): warning C4267:         with
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(290,29): warning C4267:         [
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(290,29): warning C4267:             _Ty=unsigned char
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(290,29): warning C4267:         ]
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(302,32): warning C4018: '<': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(306,31): warning C4018: '>=': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(340,40): warning C4018: '<': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(344,31): warning C4018: '>=': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(424,29): warning C4267: '=': conversion from 'size_t' to '_Ty', possible loss of data
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(424,29): warning C4267:         with
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(424,29): warning C4267:         [
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(424,29): warning C4267:             _Ty=unsigned char
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(424,29): warning C4267:         ]
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(455,32): warning C4018: '<': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(459,31): warning C4018: '>=': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(494,40): warning C4018: '<': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(498,31): warning C4018: '>=': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(657,40): warning C4018: '<': signed/unsigned mismatch
+C:\Users\greensci\Documents\GitHub\leafpack\src\leafpack\main.cpp(661,31): warning C4018: '>=': signed/unsigned mismatch
+  Generating code
+  1 of 329 functions ( 0.3%) were compiled, the rest were copied from previous compilation.
+    0 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  leafpack.vcxproj -> C:\Users\greensci\Documents\GitHub\leafpack\src\Release\leafpack.exe
