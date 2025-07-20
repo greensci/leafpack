@@ -10,7 +10,9 @@
 #include <iomanip>
 #include <random>
 #include <mutex>
+#include <filesystem>
 using namespace std;
+namespace fs = std::filesystem;
 
 // CRC32 table
 uint32_t crc32_table[256];
@@ -20,13 +22,13 @@ uint8_t crc8_table[256];
 int globalmode = 0; // if 0 = normal retail mode, if 1 = unpack mode, if 2 = pack mode
 float version = 1.0;
 
-uint8_t* split32To8(uint32_t value)
+uint8_t *split32To8(uint32_t value)
 {
-    uint8_t* bytes = new uint8_t[4];
-    bytes[0] = (value >> 24) & 0xFF; 
+    uint8_t *bytes = new uint8_t[4];
+    bytes[0] = (value >> 24) & 0xFF;
     bytes[1] = (value >> 16) & 0xFF;
     bytes[2] = (value >> 8) & 0xFF;
-    bytes[3] = value & 0xFF; 
+    bytes[3] = value & 0xFF;
     return bytes;
 }
 
@@ -43,14 +45,16 @@ void generate_crc32_table()
     }
 }
 
+void generate_crc16_table()
+{
+    const uint16_t polynomial = 0x8005;
 
-void generate_crc16_table() {
-    const uint16_t polynomial = 0x8005; 
+    for (uint16_t i = 0; i < 256; i++)
+    {
+        uint16_t crc = i << 8;
 
-    for (uint16_t i = 0; i < 256; i++) {
-        uint16_t crc = i << 8;  
-
-        for (int j = 0; j < 8; j++) {
+        for (int j = 0; j < 8; j++)
+        {
             crc = (crc & 0x8000) ? ((crc << 1) ^ polynomial) : (crc << 1);
         }
 
@@ -58,39 +62,43 @@ void generate_crc16_table() {
     }
 }
 
-void generate_crc8_table() {
+void generate_crc8_table()
+{
     const uint8_t polynomial = 0x07;
-    for (uint16_t i = 0; i < 256; i++) {
+    for (uint16_t i = 0; i < 256; i++)
+    {
         uint8_t crc = i;
-        for (int j = 0; j < 8; j++) {
+        for (int j = 0; j < 8; j++)
+        {
             crc = (crc & 0x80) ? ((crc << 1) ^ polynomial) : (crc << 1);
         }
         crc8_table[i] = crc;
     }
-    
 }
 
-
-uint8_t crc8(const std::string& word) {
+uint8_t crc8(const std::string &word)
+{
     uint8_t crc = 0;
-    for (unsigned char c : word) {
+    for (unsigned char c : word)
+    {
         crc = crc8_table[crc ^ c];
     }
-  
-    return crc;
 
+    return crc;
 }
 
-uint16_t crc16(const std::string& data) {
+uint16_t crc16(const std::string &data)
+{
     uint16_t initial = 0x0000;
     uint16_t crc = initial;
-    for (char c : data) {
+    for (char c : data)
+    {
         crc = (crc << 8) ^ crc16_table[((crc >> 8) ^ static_cast<uint8_t>(c)) & 0xFF];
     }
     return crc;
 }
 
-uint32_t crc32(const std::string& text)
+uint32_t crc32(const std::string &text)
 {
     uint32_t crc = 0xFFFFFFFF;
     for (char c : text)
@@ -100,7 +108,8 @@ uint32_t crc32(const std::string& text)
     return crc ^ 0xFFFFFFFF;
 }
 
-int generateRandom(int min, int max) {
+int generateRandom(int min, int max)
+{
     static std::random_device rd;
     static std::mutex mtx;
     static std::mt19937 gen(rd());
@@ -112,11 +121,11 @@ int generateRandom(int min, int max) {
 }
 unsigned char swapNibbles(int mode, unsigned char value)
 {
-    
+
     switch (mode)
     {
-    case 0:                                 // (value >> 4) | (value << 4)
-        return (value << 4) | (value >> 4); 
+    case 0: // (value >> 4) | (value << 4)
+        return (value << 4) | (value >> 4);
     case 1:                                 // (value >> 2) | (value << 6)
         return (value << 2) | (value >> 6); // 1
     case 2:                                 // (value >> 6) | (value << 2)
@@ -129,68 +138,66 @@ unsigned char swapNibbles(int mode, unsigned char value)
         return (value << 7) | (value >> 1); // 5
     case 6:                                 // (value >> 1) | (value << 7)
         return (value << 1) | (value >> 7); // 6
-    case 7:                                 
-        return (value << 5) | (value >> 3); 
-    case 8:                                 // (value >> 4) | (value << 4)
-        return (value << 4) | (value >> 4); 
+    case 7:
+        return (value << 5) | (value >> 3);
+    case 8: // (value >> 4) | (value << 4)
+        return (value << 4) | (value >> 4);
     case 9:                                 // (value >> 2) | (value << 6)
         return (value << 2) | (value >> 6); // 1
-    case 10:                                 // (value >> 6) | (value << 2)
+    case 10:                                // (value >> 6) | (value << 2)
         return (value << 6) | (value >> 2); // 2
-    case 11:                                 // (value >> 5) | (value << 3)
+    case 11:                                // (value >> 5) | (value << 3)
         return (value << 5) | (value >> 3); // 3
-    case 12:                                 // (value >> 3) | (value << 5)
+    case 12:                                // (value >> 3) | (value << 5)
         return (value << 3) | (value >> 5); // 4
-    case 13:                                 // (value >> 7) | (value << 1)
+    case 13:                                // (value >> 7) | (value << 1)
         return (value << 7) | (value >> 1); // 5
-    case 14:                                 // (value >> 1) | (value << 7)
+    case 14:                                // (value >> 1) | (value << 7)
         return (value << 1) | (value >> 7); // 6
-    case 15:                                 
-        return (value << 5) | (value >> 3); 
-    case 16:                                 // (value >> 4) | (value << 4)
-        return (value << 4) | (value >> 4); 
-    case 17:                                 // (value >> 2) | (value << 6)
+    case 15:
+        return (value << 5) | (value >> 3);
+    case 16: // (value >> 4) | (value << 4)
+        return (value << 4) | (value >> 4);
+    case 17:                                // (value >> 2) | (value << 6)
         return (value << 2) | (value >> 6); // 1
-    case 18:                                 // (value >> 6) | (value << 2)
+    case 18:                                // (value >> 6) | (value << 2)
         return (value << 6) | (value >> 2); // 2
-    case 19:                                 // (value >> 5) | (value << 3)
+    case 19:                                // (value >> 5) | (value << 3)
         return (value << 5) | (value >> 3); // 3
-    case 20:                                 // (value >> 3) | (value << 5)
+    case 20:                                // (value >> 3) | (value << 5)
         return (value << 3) | (value >> 5); // 4
-    case 21:                                 // (value >> 7) | (value << 1)
+    case 21:                                // (value >> 7) | (value << 1)
         return (value << 7) | (value >> 1); // 5
-    case 22:                                 // (value >> 1) | (value << 7)
+    case 22:                                // (value >> 1) | (value << 7)
         return (value << 1) | (value >> 7); // 6
-    case 23:                                 
-        return (value << 5) | (value >> 3); 
-    case 24:                                 // (value >> 4) | (value << 4)
-        return (value << 4) | (value >> 4); 
-    case 25:                                 // (value >> 2) | (value << 6)
+    case 23:
+        return (value << 5) | (value >> 3);
+    case 24: // (value >> 4) | (value << 4)
+        return (value << 4) | (value >> 4);
+    case 25:                                // (value >> 2) | (value << 6)
         return (value << 2) | (value >> 6); // 1
-    case 26:                                 // (value >> 6) | (value << 2)
+    case 26:                                // (value >> 6) | (value << 2)
         return (value << 6) | (value >> 2); // 2
-    case 27:                                 // (value >> 5) | (value << 3)
+    case 27:                                // (value >> 5) | (value << 3)
         return (value << 5) | (value >> 3); // 3
-    case 28:                                 // (value >> 3) | (value << 5)
+    case 28:                                // (value >> 3) | (value << 5)
         return (value << 3) | (value >> 5); // 4
-    case 29:                                 // (value >> 7) | (value << 1)
+    case 29:                                // (value >> 7) | (value << 1)
         return (value << 7) | (value >> 1); // 5
-    case 30:                                 // (value >> 1) | (value << 7)
+    case 30:                                // (value >> 1) | (value << 7)
         return (value << 1) | (value >> 7); // 6
-    case 31:                                 
-        return (value << 5) | (value >> 3); 
+    case 31:
+        return (value << 5) | (value >> 3);
     default:
         throw out_of_range("Invalid mode value (must be 0-7).");
     }
-
-    
 }
 unsigned char reswapNibbles(int mode, unsigned char value)
 {
     switch (mode)
     {
-    case 0:                                 // (value >> 4) | (value >> 4)
-        return (value >> 4) | (value << 4); 
+    case 0: // (value >> 4) | (value >> 4)
+        return (value >> 4) | (value << 4);
     case 1:                                 // (value >> 2) | (value >> 6)
         return (value >> 2) | (value << 6); // 1
     case 2:                                 // (value >> 6) | (value >> 2)
@@ -203,56 +210,56 @@ unsigned char reswapNibbles(int mode, unsigned char value)
         return (value >> 7) | (value << 1); // 5
     case 6:                                 // (value >> 1) | (value >> 7)
         return (value >> 1) | (value << 7); // 6
-    case 7:                                 
-        return (value >> 5) | (value << 3); 
-    case 8:                                 // (value >> 4) | (value >> 4)
-        return (value >> 4) | (value << 4); 
+    case 7:
+        return (value >> 5) | (value << 3);
+    case 8: // (value >> 4) | (value >> 4)
+        return (value >> 4) | (value << 4);
     case 9:                                 // (value >> 2) | (value >> 6)
         return (value >> 2) | (value << 6); // 1
-    case 10:                                 // (value >> 6) | (value >> 2)
+    case 10:                                // (value >> 6) | (value >> 2)
         return (value >> 6) | (value << 2); // 2
-    case 11:                                 // (value >> 5) | (value >> 3)
+    case 11:                                // (value >> 5) | (value >> 3)
         return (value >> 5) | (value << 3); // 3
-    case 12:                                 // (value >> 3) | (value >> 5)
+    case 12:                                // (value >> 3) | (value >> 5)
         return (value >> 3) | (value << 5); // 4
-    case 13:                                 // (value >> 7) | (value >> 1)
+    case 13:                                // (value >> 7) | (value >> 1)
         return (value >> 7) | (value << 1); // 5
-    case 14:                                 // (value >> 1) | (value >> 7)
+    case 14:                                // (value >> 1) | (value >> 7)
         return (value >> 1) | (value << 7); // 6
-    case 15:                                 
-        return (value >> 5) | (value << 3); 
-    case 16:                                 // (value >> 4) | (value >> 4)
-        return (value >> 4) | (value << 4); 
-    case 17:                                 // (value >> 2) | (value >> 6)
+    case 15:
+        return (value >> 5) | (value << 3);
+    case 16: // (value >> 4) | (value >> 4)
+        return (value >> 4) | (value << 4);
+    case 17:                                // (value >> 2) | (value >> 6)
         return (value >> 2) | (value << 6); // 1
-    case 18:                                 // (value >> 6) | (value >> 2)
+    case 18:                                // (value >> 6) | (value >> 2)
         return (value >> 6) | (value << 2); // 2
-    case 19:                                 // (value >> 5) | (value >> 3)
+    case 19:                                // (value >> 5) | (value >> 3)
         return (value >> 5) | (value << 3); // 3
-    case 20:                                 // (value >> 3) | (value >> 5)
+    case 20:                                // (value >> 3) | (value >> 5)
         return (value >> 3) | (value << 5); // 4
-    case 21:                                 // (value >> 7) | (value >> 1)
+    case 21:                                // (value >> 7) | (value >> 1)
         return (value >> 7) | (value << 1); // 5
-    case 22:                                 // (value >> 1) | (value >> 7)
+    case 22:                                // (value >> 1) | (value >> 7)
         return (value >> 1) | (value << 7); // 6
-    case 23:                                 
-        return (value >> 5) | (value << 3); 
-    case 24:                                 // (value >> 4) | (value >> 4)
-        return (value >> 4) | (value << 4); 
-    case 25:                                 // (value >> 2) | (value >> 6)
+    case 23:
+        return (value >> 5) | (value << 3);
+    case 24: // (value >> 4) | (value >> 4)
+        return (value >> 4) | (value << 4);
+    case 25:                                // (value >> 2) | (value >> 6)
         return (value >> 2) | (value << 6); // 1
-    case 26:                                 // (value >> 6) | (value >> 2)
+    case 26:                                // (value >> 6) | (value >> 2)
         return (value >> 6) | (value << 2); // 2
-    case 27:                                 // (value >> 5) | (value >> 3)
+    case 27:                                // (value >> 5) | (value >> 3)
         return (value >> 5) | (value << 3); // 3
-    case 28:                                 // (value >> 3) | (value >> 5)
+    case 28:                                // (value >> 3) | (value >> 5)
         return (value >> 3) | (value << 5); // 4
-    case 29:                                 // (value >> 7) | (value >> 1)
+    case 29:                                // (value >> 7) | (value >> 1)
         return (value >> 7) | (value << 1); // 5
-    case 30:                                 // (value >> 1) | (value >> 7)
+    case 30:                                // (value >> 1) | (value >> 7)
         return (value >> 1) | (value << 7); // 6
-    case 31:                                 
-        return (value >> 5) | (value << 3); 
+    case 31:
+        return (value >> 5) | (value << 3);
     default:
         throw out_of_range("Invalid mode value (must be 0-7).");
     }
@@ -264,7 +271,7 @@ string byteToBinaryString(unsigned char b)
     return bits.to_string();
 }
 
-vector<unsigned char> readFile(const string& filename)
+vector<unsigned char> readFile(const string &filename)
 {
     ifstream file(filename, ios::binary);
     if (!file)
@@ -277,37 +284,137 @@ vector<unsigned char> readFile(const string& filename)
     file.seekg(0, ios::beg);
 
     vector<unsigned char> data(fileSize);
-    file.read(reinterpret_cast<char*>(data.data()), fileSize);
+    file.read(reinterpret_cast<char *>(data.data()), fileSize);
 
     return data;
 }
 
-void writeFile(const string& filename, const vector<unsigned char>& data)
+void writeFile(const string &filename, const vector<unsigned char> &data)
 {
     ofstream file(filename, ios::binary);
     if (!file)
     {
         throw runtime_error("Could not create file");
     }
-    file.write(reinterpret_cast<const char*>(data.data()), data.size());
+    file.write(reinterpret_cast<const char *>(data.data()), data.size());
 }
 
-string getOutputFilename(const string& inputFilename)
+string getOutputFilename(const string &inputFilename)
 {
     size_t dotPos = inputFilename.find_last_of('.');
     string nameWithoutExt = inputFilename.substr(0, dotPos);
     string extension = (dotPos != string::npos) ? inputFilename.substr(dotPos) : "";
     return nameWithoutExt + "_packed.lpk";
 }
-void split16To8(uint16_t value, uint8_t& highByte, uint8_t& lowByte) {
-    highByte = (value >> 8) & 0xFF;  // Get upper 8 bits
-    lowByte = value & 0xFF;          // Get lower 8 bits
+void split16To8(uint16_t value, uint8_t &highByte, uint8_t &lowByte)
+{
+    highByte = (value >> 8) & 0xFF; // Get upper 8 bits
+    lowByte = value & 0xFF;         // Get lower 8 bits
 }
 
-int main(int argc, char* argv[])
+std::string getRelativePath(const std::string &absolutePath, const std::string &baseDirectory)
 {
+    try
+    {
+        // Convert both paths to absolute, canonical form (removes . and ..)
+        fs::path absPath = fs::absolute(fs::canonical(absolutePath));
+        fs::path basePath = fs::absolute(fs::canonical(baseDirectory));
+
+        // Make sure the base path ends with a separator
+        if (basePath.string().back() != fs::path::preferred_separator)
+        {
+            basePath += fs::path::preferred_separator;
+        }
+
+        // Get the relative path
+        fs::path relativePath = absPath.lexically_relative(basePath);
+
+        return relativePath.string();
+    }
+    catch (const fs::filesystem_error &e)
+    {
+        // Handle error (e.g., paths don't share a common root)
+        return absolutePath; // Fallback to absolute path
+    }
+}
+
+int main(int argc, char *argv[])
+{
+
+    std::cout << "cout " << argc << endl;
     generate_crc32_table();
     string appmode = "";
+    std::vector<std::string> fileNames;
+    std::vector<std::string> relativeFileNames;
+    int startval = 1;
+
+    if (std::string(argv[1]).find(".lpk") != std::string::npos)
+    {
+        globalmode = 1;
+        startval = 1;
+    }
+    else if (std::string(argv[1]) == "-p")
+    {
+        startval = 2;
+    }
+    else if (std::string(argv[1]) == "-pp")
+    {
+        startval = 2;
+    }
+    else if (std::string(argv[1]) == "-d")
+    {
+        startval = 2;
+    }
+    else
+    {
+        startval = 1;
+        globalmode = 2;
+    }
+string curpath = fs::current_path().string();
+
+    try
+    {
+        for (int i = startval; i < argc; i++)
+        {
+            if (fs::is_directory(argv[i]))
+            {
+                for (const auto &entry : fs::directory_iterator(argv[i]))
+                {
+                    // Get the filename and add to vector
+                    // fileNames.push_back(entry.path().filename().string());
+
+                    
+
+                    // Check if it's a file or directory
+                    if (fs::is_directory(entry.status()))
+                    {
+                        std::cout << entry.path() << " is a directory\n";
+                    }
+                    else if (fs::is_regular_file(entry.status()))
+                    {
+                        fileNames.push_back(entry.path().string());
+                        relativeFileNames.push_back(getRelativePath(entry.path().string(), curpath));
+                    }
+                    std::cout << "file: " << relativeFileNames[i - startval] << std::endl;
+                }
+                
+            }
+            else if (fs::is_regular_file(argv[i]))
+            {
+                fileNames.push_back(argv[i]);
+                relativeFileNames.push_back(getRelativePath(argv[i], curpath));
+                std::cout << "file: " << relativeFileNames[i - startval] << std::endl;
+            }
+            else
+            {
+                std::cerr << "'" << argv[i] << "' is not a file or directory. Maybe it doesn't exist?\n";
+            }
+        }
+    }
+    catch (const fs::filesystem_error &e)
+    {
+        std::cerr << "Filesystem error: " << e.what() << '\n';
+    }
 
     if (globalmode == 1)
     {
@@ -317,10 +424,11 @@ int main(int argc, char* argv[])
     {
         appmode = "(pack mode)\n";
     }
-    std::cout << "LeafPack v" << version <<" (https://github.com/greensci/leafpack)\nby greensci (https://github.com/greensci)\n" << appmode << endl;
+    std::cout << "LeafPack v" << version << " (https://github.com/greensci/leafpack)\nby greensci (https://github.com/greensci)\n"
+              << appmode << endl;
 
-
-    if (argc < 2)
+    std::cout << "hello: " << fileNames[0] << std::endl;
+    if (argc < 1)
     {
         cerr << "Usage: leafpack <argument> <inputfile>" << endl;
         cerr << "Options:" << endl;
@@ -333,487 +441,486 @@ int main(int argc, char* argv[])
 
         return 1;
     }
-  
 
-    if (std::string(argv[1]).find(".lpk") != std::string::npos)
+    for (int i = 0; i < fileNames.size(); i++)
     {
-        globalmode = 1;
-    }
-    else if (std::string(argv[1]) == "-p")
-    {
-    }
-    else if (std::string(argv[1]) == "-pp")
-    {
-    }
-    else if (std::string(argv[1]) == "-d")
-    {
-    }
-    else
-    {
-        globalmode = 2;
-    }
-
-    
-    if (std::string(argv[1]) == "-p" || globalmode == 2)
-    {
-        std::cout << "Pack file:" << endl;
-
-        try
+        if (std::string(argv[1]) == "-p" || globalmode == 2)
         {
+            std::cout << "Pack file:" << endl;
 
-            std::string arg2;
-            if (globalmode == 2)
-                arg2 = argv[1];
-            else
-                arg2 = argv[2];
-
-            size_t length = arg2.size() + 1; // Now you can use .size()
-
-            vector<unsigned char> data = readFile(arg2);
-            vector<unsigned char> packedData((data.size() + 9) + length);
-
-            packedData[0] = 0x4C; // 'L'
-            packedData[1] = 0x50; // 'P'
-            packedData[2] = 0x4B; // 'K'
-            packedData[3] = 0x31; // Version 1
-
-            unsigned char bitter = generateRandom(0, 253);
-
-            unsigned char bitter2 = generateRandom(0, 253);
-
-            unsigned char bitter3 = generateRandom(0, 253);
-
-            unsigned char bitter4 = generateRandom(0, 253);
-            packedData[4] = bitter;
-            packedData[5] = bitter2;
-            packedData[6] = bitter3;
-            packedData[7] = bitter4;
-            packedData[8] = length;
-            packedData[9] = generateRandom(0x45, 254);
-
-            string bitsBinKey = byteToBinaryString(bitter);
-            string bitsBinKey2 = byteToBinaryString(bitter2);
-            string bitsBinKey3 = byteToBinaryString(bitter3);
-            string bitsBinKey4 = byteToBinaryString(bitter4);
-
-            // std::cout << "Key bits: " << bitsBinKey << endl;
-            std::cout << "Packing file..." << endl;
-
-
-            for (int i = 10; i < (length + 10) - 1; i += 32)
+            try
             {
-                for (int x = 0; x < 32; x++)
+
+                std::string arg2 = fileNames[i];
+
+                size_t length = arg2.size() + 1; // Now you can use .size()
+
+                vector<unsigned char> data = readFile(arg2);
+                vector<unsigned char> packedData((data.size() + 9) + length);
+
+                packedData[0] = 0x4C; // 'L'
+                packedData[1] = 0x50; // 'P'
+                packedData[2] = 0x4B; // 'K'
+                packedData[3] = 0x31; // Version 1
+
+                unsigned char bitter = generateRandom(0, 253);
+
+                unsigned char bitter2 = generateRandom(0, 253);
+
+                unsigned char bitter3 = generateRandom(0, 253);
+
+                unsigned char bitter4 = generateRandom(0, 253);
+                packedData[4] = bitter;
+                packedData[5] = bitter2;
+                packedData[6] = bitter3;
+                packedData[7] = bitter4;
+                packedData[8] = length;
+                packedData[9] = generateRandom(0x45, 254);
+
+                string bitsBinKey = byteToBinaryString(bitter);
+                string bitsBinKey2 = byteToBinaryString(bitter2);
+                string bitsBinKey3 = byteToBinaryString(bitter3);
+                string bitsBinKey4 = byteToBinaryString(bitter4);
+
+                // std::cout << "Key bits: " << bitsBinKey << endl;
+                std::cout << "Packing file..." << endl;
+
+                for (int i = 10; i < (length + 10) - 1; i += 32)
                 {
-                    if (i + x >= (10 + length))
+                    for (int x = 0; x < 32; x++)
                     {
-                        continue; // Avoid out-of-bounds access
-                    }
-                    string bits;
-                    if (x > 23) {
-                        bits = bitsBinKey4;
-                    }
-                    else if (x > 15) {
-                        bits = bitsBinKey3;
-                    }
-                    else if (x > 7) {
-                        bits = bitsBinKey2;
-                    }
-                    else {
-                        bits = bitsBinKey;
-                    }
+                        if (i + x >= (10 + length))
+                        {
+                            continue; // Avoid out-of-bounds access
+                        }
+                        string bits;
+                        if (x > 23)
+                        {
+                            bits = bitsBinKey4;
+                        }
+                        else if (x > 15)
+                        {
+                            bits = bitsBinKey3;
+                        }
+                        else if (x > 7)
+                        {
+                            bits = bitsBinKey2;
+                        }
+                        else
+                        {
+                            bits = bitsBinKey;
+                        }
 
-                    unsigned char byter = 0x00;
-                    if (bits[x] == '1')
-                    {
-                        
-                        byter = swapNibbles(x, arg2[(i + x) - 10]);
-                    }
-                    else
-                    {
-                        
-                        byter = swapNibbles(0, arg2[(i + x) - 10]);
-                    }
+                        unsigned char byter = 0x00;
+                        if (bits[x] == '1')
+                        {
 
-                    packedData[i + x] = byter;
+                            byter = swapNibbles(x, arg2[(i + x) - 10]);
+                        }
+                        else
+                        {
+
+                            byter = swapNibbles(0, arg2[(i + x) - 10]);
+                        }
+
+                        packedData[i + x] = byter;
+                    }
                 }
-            }
 
-            for (int i = 9 + length; i < (data.size() + 9) + length; i += 32)
+                for (int i = 9 + length; i < (data.size() + 9) + length; i += 32)
+                {
+                    for (int x = 0; x < 32; x++)
+                    {
+                        if (i + x >= data.size() + (9 + length))
+                        {
+                            continue; // Avoid out-of-bounds access
+                        }
+                        string bits;
+                        if (x > 23)
+                        {
+                            bits = bitsBinKey4;
+                        }
+                        else if (x > 15)
+                        {
+                            bits = bitsBinKey3;
+                        }
+                        else if (x > 7)
+                        {
+                            bits = bitsBinKey2;
+                        }
+                        else
+                        {
+                            bits = bitsBinKey;
+                        }
+
+                        unsigned char byter = 0x00;
+                        if (bits[x] == '1')
+                        {
+
+                            byter = swapNibbles(x, data[(i + x) - (9 + length)]);
+                        }
+                        else
+                        {
+
+                            byter = swapNibbles(0, data[(i + x) - (9 + length)]);
+                        }
+
+                        packedData[i + x] = byter;
+                    }
+                }
+
+                // Save the packed data
+                string outputFilename = getOutputFilename(arg2);
+                writeFile(outputFilename, packedData);
+                std::cout << "File packed successfully to " << outputFilename << endl;
+            }
+            catch (const exception &e)
             {
-                for (int x = 0; x < 32; x++)
-                {
-                    if (i + x >= data.size() + (9 + length))
-                    {
-                        continue; // Avoid out-of-bounds access
-                    }
-                    string bits;
-                    if (x > 23) {
-                        bits = bitsBinKey4;
-                    }
-                    else if (x > 15) {
-                        bits = bitsBinKey3;
-                    }
-                    else if (x > 7) {
-                        bits = bitsBinKey2;
-                    }
-                    else {
-                        bits = bitsBinKey;
-                    }
-
-                    unsigned char byter = 0x00;
-                    if (bits[x] == '1')
-                    {
-                        
-                        byter = swapNibbles(x, data[(i + x) - (9 + length)]);
-                    }
-                    else
-                    {
-                        
-                        byter = swapNibbles(0, data[(i + x) - (9 + length)]);
-                    }
-
-                    packedData[i + x] = byter;
-                }
+                cerr << "Error: " << e.what() << endl;
+                std::string hi;
+                std::getline(std::cin, hi);
+                return 1;
             }
-
-            // Save the packed data
-            string outputFilename = getOutputFilename(arg2);
-            writeFile(outputFilename, packedData);
-            std::cout << "File packed successfully to " << outputFilename << endl;
         }
-        catch (const exception& e)
+        else if (std::string(argv[1]) == "-pp" || globalmode == 2)
         {
-            cerr << "Error: " << e.what() << endl;
-            return 1;
-        }
-    }
-    else if (std::string(argv[1]) == "-pp" || globalmode == 2)
-    {
-        std::cout << "Pack file with password:" << endl;
-        generate_crc8_table();
-        try
-        {
-            std::string password;
-            std::cout << "Enter a password for the packed file: \n";
-            std::getline(std::cin, password);
-            uint32_t passchecksum = crc32(password);
-
-            int passwordLength = 4;
-
-            uint8_t* passcheckumbytes = split32To8(passchecksum);
-
-            std::string arg2 = argv[2];
-
-            size_t length = arg2.size() + 1; // Now you can use .size()
-
-            vector<unsigned char> data = readFile(arg2);
-            vector<unsigned char> packedData(((data.size() + 9) + length) + passwordLength);
-
-            packedData[0] = 0x4C; // 'L'
-            packedData[1] = 0x50; // 'P'
-            packedData[2] = 0x4B; // 'K'
-            packedData[3] = 0x31; // Version 1
-
-            uint8_t bitter = generateRandom(0, 253);
-            uint8_t bitter2 = generateRandom(0, 253);
-            uint8_t bitter3 = generateRandom(0, 253);
-            uint8_t bitter4 = generateRandom(0, 253);
-            packedData[4] = bitter;
-            packedData[5] = bitter2;
-            packedData[6] = bitter3;
-            packedData[7] = bitter4;
-            packedData[8] = length;
-
-            int hahahah = generateRandom(0, 4);
-
-            packedData[9] = generateRandom(0, 68);
-
-            uint8_t one = 0x00;
-            uint8_t two = 0x00;
-          
-
-            split16To8(crc16(password), one, two);
-
-            bitter = one;
-            bitter2 = two;
-            bitter3 = crc8(password);
-            bitter4 = (passcheckumbytes[1] >> 4) | (passcheckumbytes[1] << 4);
-            //printf("key 0x%02X\n", bitter);
-
-            std::string bitsBinKey = byteToBinaryString(bitter);
-            std::string bitsBinKey2 = byteToBinaryString(bitter2);
-            std::string bitsBinKey3 = byteToBinaryString(bitter3);
-            std::string bitsBinKey4 = byteToBinaryString(bitter4);
-
-            //std::cout << "whaat? " << bitsBinKey << endl;
-
-            int hihihi = 0;
-
-            // std::cout << "Key bits: " << bitsBinKey << endl;
-
-            std::cout << "Packing file..." << endl;
-
-            for (int i = 10; i < ((length + 10) + passwordLength) - 1; i += 32)
-            {
-                for (int x = 0; x < 32; x++)
-                {
-                    if (i + x >= ((10 + length) + passwordLength))
-                    {
-                        continue; // Avoid out-of-bounds access
-                    }
-
-                    string bits;
-                    if (x > 23) {
-                        bits = bitsBinKey4;
-                    }
-                    else if (x > 15) {
-                        bits = bitsBinKey3;
-                    }
-                    else if (x > 7) {
-                        bits = bitsBinKey2;
-                    }
-                    else {
-                        bits = bitsBinKey;
-                    }
-
-                    unsigned char byter = 0x00;
-                    if (bits[x] == '1')
-                    {
-                        
-                        byter = swapNibbles(x, arg2[(i + x) - 10]);
-                    }
-                    else
-                    {
-                        
-                        byter = swapNibbles(0, arg2[(i + x) - 10]);
-                    }
-
-                    packedData[i + x] = byter;
-                }
-            }
-
-            for (int i = 9 + length; i < (data.size() + 9) + length + passwordLength; i += 32)
-            {
-                for (int x = 0; x < 32; x++)
-                {
-                    if (i + x >= data.size() + (9 + length + passwordLength))
-                    {
-                        continue; // Avoid out-of-bounds access
-                    }
-                    string bits;
-                    if (x > 23) {
-                        bits = bitsBinKey4;
-                    }
-                    else if (x > 15) {
-                        bits = bitsBinKey3;
-                    }
-                    else if (x > 7) {
-                        bits = bitsBinKey2;
-                    }
-                    else {
-                        bits = bitsBinKey;
-                    }
-
-                    unsigned char byter = 0x00;
-                    if (bits[x] == '1')
-                    {
-                        
-                        byter = swapNibbles(x, data[(i + x) - (9 + length)]);
-                    }
-                    else
-                    {
-                        
-                        byter = swapNibbles(0, data[(i + x) - (9 + length)]);
-                    }
-
-                    packedData[i + x] = byter;
-                }
-            }
-            packedData[packedData.size() - 4] = passcheckumbytes[0];
-            packedData[packedData.size() - 3] = passcheckumbytes[1];
-            packedData[packedData.size() - 2] = passcheckumbytes[2];
-            packedData[packedData.size() - 1] = passcheckumbytes[3];
-
-            // Save the packed data
-            string outputFilename = getOutputFilename(arg2);
-            writeFile(outputFilename, packedData);
-            std::cout << "File packed successfully to " << outputFilename << endl;
-        }
-        catch (const exception& e)
-        {
-            cerr << "Error: " << e.what() << endl;
-            return 1;
-        }
-    }
-    else if (std::string(argv[1]) == "-d" || globalmode == 1)
-    {
-        std::cout << "Unpack file:" << endl;
-        generate_crc8_table();
-        try
-        {
-
-            vector<unsigned char> data;
-            if (globalmode == 1)
-                data = readFile(argv[1]);
-            else
-                data = readFile(argv[2]);
-
-            size_t length = data[8]; // Now you can use .size()
-
-            vector<unsigned char> unpackedData(data.size() - (9 + length));
-
-            // Use the same key byte position (4) as in the unpacker
-
-            uint8_t bitter = data[4];
-            uint8_t bitter2 = data[5];
-            uint8_t bitter3 = data[6];
-            uint8_t bitter4 = data[7];
-            // std::cout << "Key bits: " << bitsBinKey << endl;
-            string filename = "";
-            uint8_t one = 0x00;
-            uint8_t two = 0x00;
-
-           
-            if (data[9] <= 0x45)
+            std::cout << "Pack file with password:" << endl;
+            generate_crc8_table();
+            try
             {
                 std::string password;
                 std::cout << "Enter a password for the packed file: \n";
                 std::getline(std::cin, password);
-
                 uint32_t passchecksum = crc32(password);
 
-                uint8_t* passcheckumbytes = split32To8(passchecksum);
+                int passwordLength = 4;
 
-               // std::cout << "Checksum: " << passchecksum << endl;
+                uint8_t *passcheckumbytes = split32To8(passchecksum);
+
+                std::string arg2 = fileNames[i];
+
+                size_t length = arg2.size() + 1; // Now you can use .size()
+
+                vector<unsigned char> data = readFile(arg2);
+                vector<unsigned char> packedData(((data.size() + 9) + length) + passwordLength);
+
+                packedData[0] = 0x4C; // 'L'
+                packedData[1] = 0x50; // 'P'
+                packedData[2] = 0x4B; // 'K'
+                packedData[3] = 0x31; // Version 1
+
+                uint8_t bitter = generateRandom(0, 253);
+                uint8_t bitter2 = generateRandom(0, 253);
+                uint8_t bitter3 = generateRandom(0, 253);
+                uint8_t bitter4 = generateRandom(0, 253);
+                packedData[4] = bitter;
+                packedData[5] = bitter2;
+                packedData[6] = bitter3;
+                packedData[7] = bitter4;
+                packedData[8] = length;
+
+                int hahahah = generateRandom(0, 4);
+
+                packedData[9] = generateRandom(0, 68);
+
+                uint8_t one = 0x00;
+                uint8_t two = 0x00;
+
                 split16To8(crc16(password), one, two);
 
                 bitter = one;
                 bitter2 = two;
                 bitter3 = crc8(password);
-                bitter4 = (passcheckumbytes[1] << 4) | (passcheckumbytes[1] >> 4);
+                bitter4 = (passcheckumbytes[1] >> 4) | (passcheckumbytes[1] << 4);
+                // printf("key 0x%02X\n", bitter);
 
-               
+                std::string bitsBinKey = byteToBinaryString(bitter);
+                std::string bitsBinKey2 = byteToBinaryString(bitter2);
+                std::string bitsBinKey3 = byteToBinaryString(bitter3);
+                std::string bitsBinKey4 = byteToBinaryString(bitter4);
 
-                if (data[data.size() - 4] == passcheckumbytes[0] &&
-                    data[data.size() - 3] == passcheckumbytes[1] &&
-                    data[data.size() - 2] == passcheckumbytes[2] &&
-                    data[data.size() - 1] == passcheckumbytes[3])
+                // std::cout << "whaat? " << bitsBinKey << endl;
+
+                int hihihi = 0;
+
+                // std::cout << "Key bits: " << bitsBinKey << endl;
+
+                std::cout << "Packing file..." << endl;
+
+                for (int i = 10; i < ((length + 10) + passwordLength) - 1; i += 32)
                 {
-                    std::cout << "Password is correct, unpacking..." << endl;
+                    for (int x = 0; x < 32; x++)
+                    {
+                        if (i + x >= ((10 + length) + passwordLength))
+                        {
+                            continue; // Avoid out-of-bounds access
+                        }
+
+                        string bits;
+                        if (x > 23)
+                        {
+                            bits = bitsBinKey4;
+                        }
+                        else if (x > 15)
+                        {
+                            bits = bitsBinKey3;
+                        }
+                        else if (x > 7)
+                        {
+                            bits = bitsBinKey2;
+                        }
+                        else
+                        {
+                            bits = bitsBinKey;
+                        }
+
+                        unsigned char byter = 0x00;
+                        if (bits[x] == '1')
+                        {
+
+                            byter = swapNibbles(x, arg2[(i + x) - 10]);
+                        }
+                        else
+                        {
+
+                            byter = swapNibbles(0, arg2[(i + x) - 10]);
+                        }
+
+                        packedData[i + x] = byter;
+                    }
                 }
-                else
+
+                for (int i = 9 + length; i < (data.size() + 9) + length + passwordLength; i += 32)
                 {
-                    std::cout << "Password is incorrect, aborting unpacking." << endl;
-                    return 1;
+                    for (int x = 0; x < 32; x++)
+                    {
+                        if (i + x >= data.size() + (9 + length + passwordLength))
+                        {
+                            continue; // Avoid out-of-bounds access
+                        }
+                        string bits;
+                        if (x > 23)
+                        {
+                            bits = bitsBinKey4;
+                        }
+                        else if (x > 15)
+                        {
+                            bits = bitsBinKey3;
+                        }
+                        else if (x > 7)
+                        {
+                            bits = bitsBinKey2;
+                        }
+                        else
+                        {
+                            bits = bitsBinKey;
+                        }
+
+                        unsigned char byter = 0x00;
+                        if (bits[x] == '1')
+                        {
+
+                            byter = swapNibbles(x, data[(i + x) - (9 + length)]);
+                        }
+                        else
+                        {
+
+                            byter = swapNibbles(0, data[(i + x) - (9 + length)]);
+                        }
+
+                        packedData[i + x] = byter;
+                    }
                 }
+                packedData[packedData.size() - 4] = passcheckumbytes[0];
+                packedData[packedData.size() - 3] = passcheckumbytes[1];
+                packedData[packedData.size() - 2] = passcheckumbytes[2];
+                packedData[packedData.size() - 1] = passcheckumbytes[3];
+
+                // Save the packed data
+                string outputFilename = getOutputFilename(arg2);
+                writeFile(outputFilename, packedData);
+                std::cout << "File packed successfully to " << outputFilename << endl;
             }
-
-
-            string bitsBinKey = byteToBinaryString(bitter);
-            string bitsBinKey2 = byteToBinaryString(bitter2);
-            string bitsBinKey3 = byteToBinaryString(bitter3);
-            string bitsBinKey4 = byteToBinaryString(bitter4);
-            std::cout << "Unpacking file..." << endl;
-
-            for (int i = 10; i < (data[8] + 10) - 1; i += 32)
+            catch (const exception &e)
             {
-                for (int x = 0; x < 32; x++)
-                {
-                    if (i + x >= (10 + data[8]) - 1)
-                    {
-                        continue; // Avoid out-of-bounds access
-                    }
-
-                    string bits;
-                    if (x > 23) {
-                        bits = bitsBinKey4;
-                    }
-                    else if (x > 15) {
-                        bits = bitsBinKey3;
-                    }
-                    else if (x > 7) {
-                        bits = bitsBinKey2;
-                    }
-                    else {
-                        bits = bitsBinKey;
-                    }
-
-                    unsigned char byter = 0x00;
-                    if (bits[x] == '1')
-                    {
-                        
-                        byter = reswapNibbles(x, data[i + x]);
-                    }
-                    else
-                    {
-                        
-                        byter = reswapNibbles(0, data[i + x]);
-                    }
-
-                    filename += byter;
-                }
+                std::string hi;
+                std::getline(std::cin, hi);
+                cerr << "Error: " << e.what() << endl;
+                return 1;
             }
-            //std::cout << "Filename: " << filename << endl;
-
-            for (int i = 9 + length; i < data.size() - 4; i += 32)
-            {
-                for (int x = 0; x < 32; x++)
-                {
-                    if (i + x >= data.size() - 4)
-                    {
-                        continue; // Avoid out-of-bounds access
-                    }
-                    string bits;
-                    if (x > 23) {
-                        bits = bitsBinKey4;
-                    }
-                    else if (x > 15) {
-                        bits = bitsBinKey3;
-                    }
-                    else if (x > 7) {
-                        bits = bitsBinKey2;
-                    }
-                    else {
-                        bits = bitsBinKey;
-                    }
-                    unsigned char byter = 0x00;
-                    if (bits[x] == '1')
-                    {
-                        
-                        byter = reswapNibbles(x, data[(i + x)]);
-                    }
-                    else
-                    {
-                        
-                        byter = reswapNibbles(0, data[(i + x)]);
-                    }
-
-                    unpackedData[(i + x) - (9 + length)] = byter;
-                }
-            }
-
-            // Save the packed data
-
-            writeFile(filename, unpackedData);
-            std::cout << "File unpacked successfully to " << filename << endl;
         }
-        catch (const exception& e)
+        else if (std::string(argv[1]) == "-d" || globalmode == 1)
         {
-            cerr << "Error: " << e.what() << endl;
+            std::cout << "Unpack file:" << endl;
+            generate_crc8_table();
+            try
+            {
+
+                vector<unsigned char> data = readFile(fileNames[i]);
+
+                size_t length = data[8]; // Now you can use .size()
+
+                vector<unsigned char> unpackedData(data.size() - (9 + length));
+
+                // Use the same key byte position (4) as in the unpacker
+
+                uint8_t bitter = data[4];
+                uint8_t bitter2 = data[5];
+                uint8_t bitter3 = data[6];
+                uint8_t bitter4 = data[7];
+                // std::cout << "Key bits: " << bitsBinKey << endl;
+                string filename = "";
+                uint8_t one = 0x00;
+                uint8_t two = 0x00;
+
+                if (data[9] <= 0x45)
+                {
+                    std::string password;
+                    std::cout << "Enter a password for the packed file: \n";
+                    std::getline(std::cin, password);
+
+                    uint32_t passchecksum = crc32(password);
+
+                    uint8_t *passcheckumbytes = split32To8(passchecksum);
+
+                    // std::cout << "Checksum: " << passchecksum << endl;
+                    split16To8(crc16(password), one, two);
+
+                    bitter = one;
+                    bitter2 = two;
+                    bitter3 = crc8(password);
+                    bitter4 = (passcheckumbytes[1] << 4) | (passcheckumbytes[1] >> 4);
+
+                    if (data[data.size() - 4] == passcheckumbytes[0] &&
+                        data[data.size() - 3] == passcheckumbytes[1] &&
+                        data[data.size() - 2] == passcheckumbytes[2] &&
+                        data[data.size() - 1] == passcheckumbytes[3])
+                    {
+                        std::cout << "Password is correct, unpacking..." << endl;
+                    }
+                    else
+                    {
+                        std::cout << "Password is incorrect, aborting unpacking." << endl;
+                        return 1;
+                    }
+                }
+
+                string bitsBinKey = byteToBinaryString(bitter);
+                string bitsBinKey2 = byteToBinaryString(bitter2);
+                string bitsBinKey3 = byteToBinaryString(bitter3);
+                string bitsBinKey4 = byteToBinaryString(bitter4);
+                std::cout << "Unpacking file..." << endl;
+
+                for (int i = 10; i < (data[8] + 10) - 1; i += 32)
+                {
+                    for (int x = 0; x < 32; x++)
+                    {
+                        if (i + x >= (10 + data[8]) - 1)
+                        {
+                            continue; // Avoid out-of-bounds access
+                        }
+
+                        string bits;
+                        if (x > 23)
+                        {
+                            bits = bitsBinKey4;
+                        }
+                        else if (x > 15)
+                        {
+                            bits = bitsBinKey3;
+                        }
+                        else if (x > 7)
+                        {
+                            bits = bitsBinKey2;
+                        }
+                        else
+                        {
+                            bits = bitsBinKey;
+                        }
+
+                        unsigned char byter = 0x00;
+                        if (bits[x] == '1')
+                        {
+
+                            byter = reswapNibbles(x, data[i + x]);
+                        }
+                        else
+                        {
+
+                            byter = reswapNibbles(0, data[i + x]);
+                        }
+
+                        filename += byter;
+                    }
+                }
+                // std::cout << "Filename: " << filename << endl;
+
+                for (int i = 9 + length; i < data.size() - 4; i += 32)
+                {
+                    for (int x = 0; x < 32; x++)
+                    {
+                        if (i + x >= data.size() - 4)
+                        {
+                            continue; // Avoid out-of-bounds access
+                        }
+                        string bits;
+                        if (x > 23)
+                        {
+                            bits = bitsBinKey4;
+                        }
+                        else if (x > 15)
+                        {
+                            bits = bitsBinKey3;
+                        }
+                        else if (x > 7)
+                        {
+                            bits = bitsBinKey2;
+                        }
+                        else
+                        {
+                            bits = bitsBinKey;
+                        }
+                        unsigned char byter = 0x00;
+                        if (bits[x] == '1')
+                        {
+
+                            byter = reswapNibbles(x, data[(i + x)]);
+                        }
+                        else
+                        {
+
+                            byter = reswapNibbles(0, data[(i + x)]);
+                        }
+
+                        unpackedData[(i + x) - (9 + length)] = byter;
+                    }
+                }
+
+                // Save the packed data
+
+                writeFile(filename, unpackedData);
+                std::cout << "File unpacked successfully to " << filename << endl;
+            }
+            catch (const exception &e)
+            {
+                cerr << "Error: " << e.what() << endl;
+                std::string hi;
+                std::getline(std::cin, hi);
+                return 1;
+            }
+        }
+        else
+        {
+
+            cerr << "Usage: leafpack <argument> <inputfile>" << endl;
+            cerr << "Options:" << endl;
+
+            cerr << "  -p : Pack the input file" << endl;
+            cerr << "  -d : Unpack the input file" << endl;
+            std::string hi;
+            std::getline(std::cin, hi);
             return 1;
         }
-    }
-    else
-    {
-       
-        cerr << "Usage: leafpack <argument> <inputfile>" << endl;
-        cerr << "Options:" << endl;
-
-        cerr << "  -p : Pack the input file" << endl;
-        cerr << "  -d : Unpack the input file" << endl;
-        std::string hi;
-        std::getline(std::cin, hi);
-        return 1;
     }
 
     return 0;
